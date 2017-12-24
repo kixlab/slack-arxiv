@@ -1,4 +1,6 @@
 FROM ubuntu:16.04
+RUN apt-get update  
+RUN apt-get install -y ca-certificates
 ADD ./lib/oauth2_proxy /
 CMD ["/oauth2_proxy"]
 ENV PORT 4180

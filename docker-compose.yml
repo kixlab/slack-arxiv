@@ -49,7 +49,7 @@ services:
       - 4180:4180
     command: [
       '/oauth2_proxy',
-      '--upstream=http://kibana:5602/',
+      '--upstream=http://kibana:5601/',
       '--provider=github',
       '--email-domain=*',
       '--github-org=kixlab',
@@ -62,3 +62,7 @@ volumes:
 
 networks:
   esnet:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1450
+     
