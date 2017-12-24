@@ -34,8 +34,6 @@ services:
     environment:
       SERVER_NAME: slack-arxiv-kibana
       ELASTICSEARCH_URL: "http://elasticsearch:9200"
-    ports:
-      - 5602:5601   
     networks:
       - esnet
   proxy:
@@ -51,7 +49,7 @@ services:
       - 4180:4180
     command: [
       '/oauth2_proxy',
-      '--upstream=http://localhost:5602/',
+      '--upstream=http://kibana:5602/',
       '--provider=github',
       '--email-domain=*',
       '--github-org=kixlab',
