@@ -6,6 +6,7 @@ import glob
 import json
 from slacker import Slacker
 import logging
+import requests
 from elasticsearch import Elasticsearch, helpers
 
 logging.basicConfig(level=logging.INFO)
@@ -23,7 +24,7 @@ def format_message(message, user_id_name_map, channel_name):
 
 
 def load_exported(export_path, usermap):
-    export_path = os.path.abspath(export_path)
+    export_path = os.path.join('/dump_data', export_path)
     messages = []
 
     channels = os.listdir(export_path)
@@ -62,10 +63,10 @@ def load_history(slack, usermap, latest_timestamp=0):
     return messages
 
 
-def index_messages(es, messages):
+def index_messages(es, messages, index_name):
     logging.info("{} messages to {}".format(len(messages), es_host))
     actions = ({
-        '_index': "message-arxiv",
+        '_index': index_name,
         '_type': "message",
         '_source': message,
     } for message in messages)
@@ -94,6 +95,29 @@ def get_latest_timestamp(es):
     return int(results['hits']['hits'][0]['_source']['ts'] / 1000)
 
 
+def check_index(index_name=''):
+    index_uri = os.path.join(os.environ.get('ES_HOST'), index_name)
+    mapping = {
+        "mappings": {
+            "message": {
+                "properties": {
+                    "ts": {
+                        "type": "date"
+                    }
+                }
+            }
+        }
+    }
+    resp = requests.get(index_uri).json()
+    if 'error' in resp:
+        logging.info("Creating {} index".format(index_name))
+        create_index_result = requests.put(index_uri, json=mapping).json()
+        logging.info("Result {}".format(json.dumps(create_index_result, indent=4)))
+    else:
+        logging.info("Index {} exists already".format(index_name))
+        logging.info(json.dumps(resp, indent=4))
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     token = os.environ.get('SLACK_LEGACY_TOKEN')
@@ -106,18 +130,23 @@ if __name__ == '__main__':
         default=False,
         help="Fetch latest messages using history api")
     args = parser.parse_args()
+    print(args)
 
     slack = Slacker(token)
     testAuth = doTestAuth(slack)
     userIdNameMap = getUserMap(slack)
+    index_name = 'message-arxiv'
     es_host = os.environ.get('ES_HOST')
     es = Elasticsearch(hosts=[es_host])
+    check_index(index_name)
 
     if args.export_dir:
+        logging.info("Getting dumped messages from files")
         messages_exported = load_exported(args.export_dir, userIdNameMap)
-        index_messages(es, messages_exported)
+        index_messages(es, messages_exported, index_name)
 
     if args.dump_history:
+        logging.info("Getting recent messages from history api")
         latest_ts_from_es = get_latest_timestamp(es)
         messages_history = load_history(slack, userIdNameMap, latest_ts_from_es)
-        index_messages(es, messages_history)
+        index_messages(es, messages_history, index_name)

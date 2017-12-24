@@ -1,0 +1,5 @@
+FROM scratch
+ADD ./lib/oauth2_proxy /
+CMD ["/oauth2_proxy"]
+ENV PORT 4180
+EXPOSE 4180

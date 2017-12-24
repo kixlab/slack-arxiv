@@ -1,5 +1,18 @@
 version: '3'
 services:
+  collector:
+    build:
+      context: .
+      dockerfile: Dockerfile.collector
+    env_file:
+      - .env
+    volumes:
+      - ./src/:/src
+      - ./dump_data/:/dump_data
+    depends_on:
+      - elasticsearch
+    networks:
+      - esnet
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:6.0.1
     environment:
@@ -18,15 +31,35 @@ services:
     networks:
       - esnet
   kibana:
-   image: docker.elastic.co/kibana/kibana:6.0.1
-   depends_on: ['elasticsearch']
-   environment:
-     SERVER_NAME: slack-arxiv-kibana
-     ELASTICSEARCH_URL: "http://elasticsearch:9200"
-   ports:
-     - 5601:5601
-   networks:
-     - esnet
+    image: docker.elastic.co/kibana/kibana:6.0.1
+    depends_on: ['elasticsearch']
+    environment:
+      SERVER_NAME: slack-arxiv-kibana
+      ELASTICSEARCH_URL: "http://elasticsearch:9200"
+    ports:
+      - 5601:5601
+    networks:
+      - esnet
+  auth:
+    build:
+      context: .
+      dockerfile: Dockerfile.proxy
+    env_file: .env
+    depends_on:
+      - kibana
+    networks:
+      - esnet
+    ports:
+      - 4180:4180
+    command: [
+      '/oauth2_proxy',
+      '--upstream=http://kibana:5601/',
+      '--provider=github',
+      '--email-domain=*',
+      '--github-org=kixlab',
+      '--cookie-secure=false',
+      '--http-address=0.0.0.0:4180',
+    ]
 
 volumes:
   esdata:
