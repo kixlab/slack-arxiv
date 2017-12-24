@@ -26,8 +26,6 @@ services:
         hard: -1
     volumes:
       - 'esdata:/usr/share/elasticsearch/data'
-    ports:
-      - '9200:9200'
     networks:
       - esnet
   kibana:
@@ -37,10 +35,10 @@ services:
       SERVER_NAME: slack-arxiv-kibana
       ELASTICSEARCH_URL: "http://elasticsearch:9200"
     ports:
-      - 5601:5601
+      - 5602:5601   
     networks:
       - esnet
-  auth:
+  proxy:
     build:
       context: .
       dockerfile: Dockerfile.proxy
@@ -48,12 +46,12 @@ services:
     depends_on:
       - kibana
     networks:
-      - esnet
+      - esnet  
     ports:
       - 4180:4180
     command: [
       '/oauth2_proxy',
-      '--upstream=http://kibana:5601/',
+      '--upstream=http://localhost:5602/',
       '--provider=github',
       '--email-domain=*',
       '--github-org=kixlab',
