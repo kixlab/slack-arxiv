@@ -1,5 +1,4 @@
 from history_script import getHistory, doTestAuth, getUserMap
-
 import argparse
 import os
 import glob
@@ -7,6 +6,7 @@ import json
 from slacker import Slacker
 import logging
 import requests
+import time
 from elasticsearch import Elasticsearch, helpers
 
 logging.basicConfig(level=logging.INFO)
@@ -129,6 +129,11 @@ if __name__ == '__main__':
         action='store_true',
         default=False,
         help="Fetch latest messages using history api")
+    parser.add_argument(
+        '--keep_crawling',
+        action='store_true',
+        default=False,
+        help="Fetch latest messages using history api")
     args = parser.parse_args()
     print(args)
 
@@ -147,6 +152,11 @@ if __name__ == '__main__':
 
     if args.dump_history:
         logging.info("Getting recent messages from history api")
-        latest_ts_from_es = get_latest_timestamp(es)
-        messages_history = load_history(slack, userIdNameMap, latest_ts_from_es)
-        index_messages(es, messages_history, index_name)
+        while True:
+            latest_ts_from_es = get_latest_timestamp(es)
+            messages_history = load_history(slack, userIdNameMap, latest_ts_from_es)
+            index_messages(es, messages_history, index_name)
+            if not args.keep_crawling:
+                break
+            else:
+                time.sleep(2 * 60 * 60)
