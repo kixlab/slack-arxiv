@@ -55,7 +55,7 @@ def load_history(slack, usermap, latest_timestamp=0):
         ch_messages_formatted = [
             format_message(m, usermap, channel['name'])
             for m in ch_messages
-            if float(m['ts']) > latest_timestamp
+            if int(m['ts']) > latest_timestamp
         ]
         messages.extend(ch_messages_formatted)
     logging.info("HISTORY: total {} messages collected"
