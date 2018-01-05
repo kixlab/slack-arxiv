@@ -5,7 +5,8 @@ Where Kixlab's slack messages are archived. Messages are indexed in Elasticsearc
 How to run
 ---
 1. Create GitHub OAuth app [link](https://github.com/settings/developers)
-2. Fill `.env` file
+2. Create Slack legacy token [here](https://api.slack.com/custom-integrations/legacy-tokens)
+3. Fill `.env` file
 ```commandline
 docker-compose up
 ```
@@ -19,8 +20,9 @@ docker-compose run collector python loader.py --dump_history --keep-crawling
 
 How to import exported files
 ---
-1. Copy dumped data inside `dump_data` folder
-2. Pass the **name of directory** (not path) as argument in the command below
+1. Dump all the message [here](https://get.slack.help/hc/en-us/articles/201658943-Export-data-and-message-history)
+2. Copy dumped data inside `dump_data` folder
+3. Pass the **name of directory** (not path) as argument in the command below
 ```commandline
 docker-compose run collector python loader.py --export_dir NAME_OF_DIRECTORY
 ```
