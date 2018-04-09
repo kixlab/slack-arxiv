@@ -15,7 +15,7 @@ docker-compose up
 How to fetch latest history, and keep crawling every two hour
 ---
 ```commandline
-docker-compose run collector python loader.py --dump_history --keep-crawling
+docker-compose run collector python loader.py --dump_history --keep_crawling
 ```
 
 How to import exported files
