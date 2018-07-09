@@ -9,15 +9,15 @@ import requests
 import time
 from elasticsearch import Elasticsearch, helpers
 
-logging.basicConfig(level=logging.INFO)
-
+FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+logging.basicConfig(level=logging.INFO, format=FORMAT)
 
 def format_message(message, user_id_name_map, channel_name):
     try:
         message['username'] = user_id_name_map[message['user']] \
             if 'user' in message else 'slack'
     except KeyError as e:
-        print(e)
+        logging.error(e)
     message['channel_name'] = channel_name
     message['ts'] = int(float(message['ts'])) * 1000
     return message
@@ -135,7 +135,7 @@ if __name__ == '__main__':
         default=False,
         help="Fetch latest messages using history api")
     args = parser.parse_args()
-    print(args)
+    logging.info(args)
 
     slack = Slacker(token)
     testAuth = doTestAuth(slack)
@@ -158,12 +158,12 @@ if __name__ == '__main__':
                 messages_history = load_history(slack, userIdNameMap, latest_ts_from_es)
                 index_messages(es, messages_history, index_name)
             except requests.exceptions.ConnectionError as e:
-                print(e)
-                print("Retrying after 16 hours")
+                logging.warning(e)
+                logging.warning("Retrying after 16 hours")
                 time.sleep(16 * 60 * 60)
                 continue
             if not args.keep_crawling:
                 break
             else:
-                print("Updated successfully")
+                logging.info("Updated successfully")
                 time.sleep(2 * 60 * 60)
