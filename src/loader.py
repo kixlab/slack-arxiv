@@ -157,7 +157,7 @@ if __name__ == '__main__':
                 latest_ts_from_es = get_latest_timestamp(es)
                 messages_history = load_history(slack, userIdNameMap, latest_ts_from_es)
                 index_messages(es, messages_history, index_name)
-            except HTTPError as e:
+            except requests.exceptions.ConnectionError as e:
                 print(e)
                 print("Retrying after 16 hours")
                 time.sleep(16 * 60 * 60)
