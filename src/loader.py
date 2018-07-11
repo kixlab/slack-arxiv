@@ -8,16 +8,23 @@ import logging
 import requests
 import time
 from elasticsearch import Elasticsearch, helpers
+from cmreslogging.handlers import CMRESHandler
 
+handler = CMRESHandler(hosts=[{'host': 'elasticsearch', 'port': 9200, 'index_name_frequency': CMRESHandler.IndexNameFrequency.MONTHLY}],
+                                   auth_type=CMRESHandler.AuthType.NO_AUTH,
+                                                              es_index_name="logs-collector")
 FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT)
+
+log = logging.getLogger("slack-arxiv")
+log.addHandler(handler)
 
 def format_message(message, user_id_name_map, channel_name):
     try:
         message['username'] = user_id_name_map[message['user']] \
             if 'user' in message else 'slack'
     except KeyError as e:
-        logging.error(e)
+        log.error(e)
     message['channel_name'] = channel_name
     message['ts'] = int(float(message['ts'])) * 1000
     return message
@@ -29,7 +36,7 @@ def load_exported(export_path, usermap):
 
     channels = os.listdir(export_path)
     for channel in channels:
-        logging.info("EXPORT: handling #{}".format(channel))
+        log.info("EXPORT: handling #{}".format(channel))
         message_files = glob.glob(
             os.path.join(export_path, channel, '*.json'))
         for file in message_files:
@@ -39,18 +46,18 @@ def load_exported(export_path, usermap):
                                       in daily_messages]
                 messages.extend(formatted_messages)
 
-    logging.info("EXPORT: total {} messages collected"
+    log.info("EXPORT: total {} messages collected"
                  .format(len(messages)))
     return messages
 
 
 def load_history(slack, usermap, latest_timestamp=0):
-    logging.info("HISTORY: loading after {}"
+    log.info("HISTORY: loading after {}"
                  .format(latest_timestamp))
     channels = slack.channels.list().body['channels']
     messages = []
     for channel in channels:
-        logging.info("HISTORY: handling #{}".format(channel['name']))
+        log.info("HISTORY: handling #{}".format(channel['name']))
         ch_messages = getHistory(slack.channels, channel['id'])
         ch_messages_formatted = [
             format_message(m, usermap, channel['name'])
@@ -58,20 +65,20 @@ def load_history(slack, usermap, latest_timestamp=0):
             if int(float(m['ts'])) > latest_timestamp
         ]
         messages.extend(ch_messages_formatted)
-    logging.info("HISTORY: total {} messages collected"
+    log.info("HISTORY: total {} messages collected"
                  .format(len(messages)))
     return messages
 
 
 def index_messages(es, messages, index_name):
-    logging.info("{} messages to {}".format(len(messages), es_host))
+    log.info("{} messages to {}".format(len(messages), es_host))
     actions = ({
         '_index': index_name,
         '_type': "message",
         '_source': message,
     } for message in messages)
     action_results = helpers.bulk(es, actions)
-    logging.info("Indexing finished. {}"
+    log.info("Indexing finished. {}"
                  .format(json.dumps(action_results, indent=4)))
     return
 
@@ -110,12 +117,12 @@ def check_index(index_name=''):
     }
     resp = requests.get(index_uri).json()
     if 'error' in resp:
-        logging.info("Creating {} index".format(index_name))
+        log.info("Creating {} index".format(index_name))
         create_index_result = requests.put(index_uri, json=mapping).json()
-        logging.info("Result {}".format(json.dumps(create_index_result, indent=4)))
+        log.info("Result {}".format(json.dumps(create_index_result, indent=4)))
     else:
-        logging.info("Index {} exists already".format(index_name))
-        logging.info(json.dumps(resp, indent=4))
+        log.info("Index {} exists already".format(index_name))
+        log.info(json.dumps(resp, indent=4))
 
 
 if __name__ == '__main__':
@@ -135,7 +142,7 @@ if __name__ == '__main__':
         default=False,
         help="Fetch latest messages using history api")
     args = parser.parse_args()
-    logging.info(args)
+    log.info(args)
 
     slack = Slacker(token)
     testAuth = doTestAuth(slack)
@@ -146,24 +153,24 @@ if __name__ == '__main__':
     check_index(index_name)
 
     if args.export_dir:
-        logging.info("Getting dumped messages from files")
+        log.info("Getting dumped messages from files")
         messages_exported = load_exported(args.export_dir, userIdNameMap)
         index_messages(es, messages_exported, index_name)
 
     if args.dump_history:
-        logging.info("Getting recent messages from history api")
+        log.info("Getting recent messages from history api")
         while True:
             try:
                 latest_ts_from_es = get_latest_timestamp(es)
                 messages_history = load_history(slack, userIdNameMap, latest_ts_from_es)
                 index_messages(es, messages_history, index_name)
             except requests.exceptions.ConnectionError as e:
-                logging.warning(e)
-                logging.warning("Retrying after 16 hours")
+                log.warning(e)
+                log.warning("Retrying after 16 hours")
                 time.sleep(16 * 60 * 60)
                 continue
             if not args.keep_crawling:
                 break
             else:
-                logging.info("Updated successfully")
+                log.info("Updated successfully")
                 time.sleep(2 * 60 * 60)
