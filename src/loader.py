@@ -10,9 +10,10 @@ import time
 from elasticsearch import Elasticsearch, helpers
 from cmreslogging.handlers import CMRESHandler
 
-handler = CMRESHandler(hosts=[{'host': 'elasticsearch', 'port': 9200, 'index_name_frequency': CMRESHandler.IndexNameFrequency.MONTHLY}],
-                                   auth_type=CMRESHandler.AuthType.NO_AUTH,
-                                                              es_index_name="logs-collector")
+handler = CMRESHandler(hosts=[{'host': 'elasticsearch', 'port': 9200 }],
+                       index_name_frequency=CMRESHandler.IndexNameFrequency.MONTHLY,
+                       auth_type=CMRESHandler.AuthType.NO_AUTH,
+                       es_index_name="logs-collector")
 FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT)
 
